@@ -192,11 +192,11 @@ read -r event_choice
 
 case "$event_choice" in
     1)
-        events='["s3:ObjectCreated:*","s3:ObjectRemoved:*"]'
+        events='["s3:ObjectCreated:Copy","s3:ObjectRemoved:*"]'
         echo "Selected: Basic events"
         ;;
     *)
-        events='["s3:ObjectCreated:*","s3:ObjectRemoved:*","s3:LifecycleTransition","s3:ObjectRestore:*"]'
+        events='["s3:ObjectCreated:Copy","s3:ObjectRemoved:*","s3:LifecycleTransition","s3:ObjectRestore:*"]'
         echo "Selected: All events"
         ;;
 esac
