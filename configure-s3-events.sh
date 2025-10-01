@@ -2,8 +2,8 @@
 ######################################################################
 # MEDIALAB
 ######################################################################
-
-set -e
+# Interactive S3 Event Notification Configuration Script
+######################################################################
 
 CONFIG_FILE="s3-notification-config.json"
 
@@ -56,7 +56,6 @@ validate_and_convert_bucket() {
 validate_bucket_name() {
     local bucket="$1"
 
-    # Basic length check
     if [[ ${#bucket} -lt 3 || ${#bucket} -gt 63 ]]; then
         return 1
     fi
