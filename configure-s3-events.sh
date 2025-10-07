@@ -97,19 +97,6 @@ echo
 echo "SQS ARN: $SQS_ARN"
 echo
 
-validate_and_convert_bucket() {
-    local input="$1"
-
-    if [[ "$input" =~ ^arn:aws:s3:::(.+)$ ]]; then
-        bucket_name="${BASH_REMATCH[1]}"
-        echo "$bucket_name"
-        return 0
-    fi
-
-    echo "$input"
-    return 0
-}
-
 echo "Enter S3 bucket names or ARNs (one per line, press Enter on empty line to finish):"
 echo "Examples:"
 echo "  - Bucket name: my-bucket-name"
@@ -199,6 +186,20 @@ case "$event_choice" in
         echo "Selected: All events"
         ;;
 esac
+
+echo
+echo "Skip destination validation?"
+echo "  - No (recommended): Validate SQS can receive events before applying"
+echo "  - Yes: Apply without validation (use if validation fails but config is correct)"
+read -p "Skip validation? (y/N): " -r skip_validation
+
+if [[ "$skip_validation" =~ ^[Yy]$ ]]; then
+    SKIP_FLAG="--skip-destination-validation"
+    echo "Will skip validation"
+else
+    SKIP_FLAG=""
+    echo "Will validate destination"
+fi
 
 echo
 echo "Creating notification configuration..."
@@ -303,7 +304,7 @@ EOF
     if aws s3api put-bucket-notification-configuration \
         --bucket "$bucket" \
         --notification-configuration "file://$CONFIG_FILE" \
-        --skip-destination-validation 2>"$error_output"; then
+        $SKIP_FLAG 2>"$error_output"; then
         echo "✓ Success"
         rm -f "$error_output"
     else
@@ -331,10 +332,11 @@ if [ ${#failed_buckets[@]} -gt 0 ]; then
     done
 fi
 
-if [ $((${#BUCKETS[@]} - ${#failed_buckets[@]})) -gt 0 ]; then
+if [ $((unique_bucket_count - ${#failed_buckets[@]})) -gt 0 ]; then
     echo
     echo "Verifying configuration (checking first successful bucket)..."
-    for bucket in "${BUCKETS[@]}"; do
+    for bucket_config in "${BUCKET_CONFIGS[@]}"; do
+        IFS='|' read -r bucket path <<< "$bucket_config"
         if [[ ! " ${failed_buckets[*]} " =~ " ${bucket} " ]]; then
             echo "Verification for bucket: $bucket"
             if aws s3api get-bucket-notification-configuration --bucket "$bucket" --output table 2>/dev/null; then
